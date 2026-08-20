@@ -9,6 +9,7 @@ permissions:
 jobs:
   check-updates:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # Límite global para todo el job (opcional)
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
@@ -23,6 +24,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Ejecutar Script
+        timeout-minutes: 10 # Cancela el paso si dura más de 10 minutos
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
