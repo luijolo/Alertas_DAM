@@ -45,13 +45,19 @@ tryCatch({
     sep <- if (grepl("\\?", file_url)) "&" else "?"
     url_nocache <- paste0(file_url, sep, "nocache=", as.numeric(Sys.time()))
     
-    res <- GET(
-      url_nocache, 
-      add_headers("Cache-Control" = "no-cache", "Pragma" = "no-cache"),
-      write_disk(dest_path, overwrite = TRUE)
-    )
+    # Descarga individual con tiempo límite (timeout) y captura silenciosa de errores
+    res <- tryCatch({
+      GET(
+        url_nocache, 
+        add_headers("Cache-Control" = "no-cache", "Pragma" = "no-cache"),
+        write_disk(dest_path, overwrite = TRUE),
+        timeout(20) # Límite máximo de 20 segundos por archivo
+      )
+    }, error = function(e) {
+      NULL # Si hay timeout u otro error de red, pasa al siguiente archivo en silencio
+    })
     
-    if (status_code(res) == 200) {
+    if (!is.null(res) && status_code(res) == 200) {
       current_hash <- NULL
       fmt <- excel_format(dest_path)
       
@@ -91,6 +97,7 @@ tryCatch({
   # Escribir el nuevo JSON
   write_json(new_hashes, state_file, auto_unbox = TRUE, pretty = TRUE)
   
+  # Notificación por Telegram ÚNICAMENTE si existen archivos actualizados
   if (length(archivos_actualizados) > 0) {
     end_time <- Sys.time()
     duration <- round(as.numeric(difftime(end_time, start_time, units = "secs")))
@@ -107,6 +114,6 @@ tryCatch({
   }
   
 }, error = function(e) {
-  send_telegram(paste0("Error revisando actualizaciones: ", e$message))
-  stop(e)
+  # En lugar de notificar a Telegram, solo imprime en consola/log de ejecución
+  message("Proceso finalizado con observaciones/errores: ", e$message)
 })
